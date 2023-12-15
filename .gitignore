@@ -1,3 +1,4 @@
+.DS_Store
 .promtail-data
 apache_logs
 backend/var
