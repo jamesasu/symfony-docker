@@ -11,6 +11,8 @@ services:
       - "80:80"
       - "443:443"
       - "8080:8080"
+    volumes:
+      - ./backend/public:/var/www/app/public
 
   app:
     networks:
@@ -21,7 +23,7 @@ services:
       context: docker
       dockerfile: php.Dockerfile
     volumes:
-      - ./:/var/www/app/
+      - ./backend:/var/www/app/
       - php-sessions:/var/lib/php/sessions
     environment:
       - APP_ENV=dev
