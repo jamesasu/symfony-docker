@@ -1,0 +1,66 @@
+version: "3"
+services:
+  webserver:
+    networks:
+      - traefik
+      - php
+    build: 
+      context: docker
+      dockerfile: apache.Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+
+  app:
+    networks:
+      - php
+      - db
+      - mailpit
+    build: 
+      context: docker
+      dockerfile: php.Dockerfile
+    volumes:
+      - ./:/var/www/app/
+      - php-sessions:/var/lib/php/sessions
+    environment:
+      - APP_ENV=dev
+      - DATABASE_USER=app
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=intranet
+      - SECRETS_FILE_DBPASS=/etc/secrets/dbpass-local
+      # Delivery can be disabled via "null://localhost"
+      - MAILER_URL=smtp://mailpit:1025
+
+  adminer:
+    networks:
+      - db
+      - traefik
+    image: adminer
+    environment:
+      - ADMINER_DESIGN=nette
+      - ADMINER_DEFAULT_SERVER=db
+    expose:
+      - 8080
+
+  promtail:
+    image: grafana/promtail:2.8.6
+    volumes:
+      - ./apache_logs:/var/log/apache2/
+      - ./promtail.yaml:/etc/promtail/config.yaml:ro
+      - ./.promtail-data:/etc/promtail/data/
+      - /etc/secrets/loki.auth:/etc/secrets/loki.auth:ro
+    command: -config.file=/etc/promtail/config.yaml -config.expand-env=true
+
+
+volumes:
+  php-sessions:
+
+networks:
+  db:
+  php:
+  mailpit:
+  traefik:
+    #external: true
+    name: traefik_default
