@@ -13,12 +13,13 @@ services:
       - "8080:8080"
     volumes:
       - ./backend/public:/var/www/app/public
+    depends_on:
+      - app
 
   app:
     networks:
       - php
       - db
-      - mailpit
     build: 
       context: docker
       dockerfile: php.Dockerfile
@@ -27,13 +28,23 @@ services:
       - php-sessions:/var/lib/php/sessions
     environment:
       - APP_ENV=dev
-      - DATABASE_USER=app
-      - DATABASE_HOST=db
-      - DATABASE_PORT=3306
-      - DATABASE_NAME=intranet
-      - SECRETS_FILE_DBPASS=/etc/secrets/dbpass-local
-      # Delivery can be disabled via "null://localhost"
-      - MAILER_URL=smtp://mailpit:1025
+      - DATABASE_URL="mysql://app:examplePassword@db:3306/app?serverVersion=11.2.2-MariaDB"
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:11.2.2
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_USER: app
+      MYSQL_PASSWORD: examplePassword
+      MYSQL_ROOT_PASSWORD: examplePassword
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - db
 
   adminer:
     networks:
@@ -46,23 +57,13 @@ services:
     expose:
       - 8080
 
-  promtail:
-    image: grafana/promtail:2.8.6
-    volumes:
-      - ./apache_logs:/var/log/apache2/
-      - ./promtail.yaml:/etc/promtail/config.yaml:ro
-      - ./.promtail-data:/etc/promtail/data/
-      - /etc/secrets/loki.auth:/etc/secrets/loki.auth:ro
-    command: -config.file=/etc/promtail/config.yaml -config.expand-env=true
-
-
 volumes:
   php-sessions:
+  db:
 
 networks:
   db:
   php:
-  mailpit:
   traefik:
     #external: true
     name: traefik_default
